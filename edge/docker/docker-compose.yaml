@@ -109,6 +109,19 @@ services:
     networks:
       road_vision:
 
+  mapview:
+    container_name: mapview
+    build: ../../mapview
+    environment:
+      PORT: 8050
+      # Браузер користувача підключається до Store WebSocket на хості
+      STORE_WS_HOST: "localhost"
+      STORE_WS_PORT: 8000
+    ports:
+      - "8050:8050"
+    networks:
+      road_vision:
+
   fake_agent:
     container_name: agent
     build: ../../agent

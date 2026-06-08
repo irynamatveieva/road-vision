@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapView — стан дорожнього покриття</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #panel {
+            padding: 10px 14px; background: #1e2a38; color: #fff;
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        }
+        #panel h1 { font-size: 18px; margin: 0 12px 0 0; }
+        button {
+            padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer;
+            font-size: 14px; background: #2d9cdb; color: #fff;
+        }
+        button:hover { background: #2585bd; }
+        button.live { background: #27ae60; }
+        button.live:hover { background: #1e8e4e; }
+        .legend { display: flex; gap: 12px; margin-left: auto; font-size: 13px; }
+        .legend span { display: inline-flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        #status { font-size: 13px; opacity: .85; }
+        #map { height: calc(100vh - 52px); width: 100%; }
+    </style>
+</head>
+<body>
+<div id="panel">
+    <h1>🛣️ MapView — стан дорожнього покриття</h1>
+    <button onclick="loadFromFile()">Завантажити з файлу</button>
+    <button class="live" onclick="connectStore()">Підключитись до Store (наживо)</button>
+    <button onclick="clearMap()">Очистити</button>
+    <span id="status">готово</span>
+    <div class="legend">
+        <span><i class="dot" style="background:#27ae60"></i>smooth</span>
+        <span><i class="dot" style="background:#f2994a"></i>bump</span>
+        <span><i class="dot" style="background:#eb5757"></i>pothole</span>
+    </div>
+</div>
+<div id="map"></div>
+
+<script>
+    // Карта з центром на Києві
+    const map = L.map('map').setView([50.4501, 30.5234], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(map);
+
+    let layer = L.layerGroup().addTo(map);
+    let ws = null;
+
+    const COLORS = { smooth: '#27ae60', bump: '#f2994a', pothole: '#eb5757' };
+
+    function setStatus(text) { document.getElementById('status').textContent = text; }
+
+    // Виправлення переплутаних координат: широта Києва ~50, довгота ~30.
+    function normalize(lat, lon) {
+        if (lat >= 45 && lat <= 55) return [lat, lon];
+        if (lon >= 45 && lon <= 55) return [lon, lat];
+        return [lat, lon];
+    }
+
+    function addPoint(roadState, lat, lon) {
+        const [a, b] = normalize(lat, lon);
+        const color = COLORS[roadState] || '#888';
+        L.circleMarker([a, b], {
+            radius: roadState === 'smooth' ? 5 : 8,
+            color: color, fillColor: color, fillOpacity: 0.85, weight: 1
+        }).bindPopup('Стан: <b>' + roadState + '</b><br>(' + a.toFixed(5) + ', ' + b.toFixed(5) + ')')
+          .addTo(layer);
+        return [a, b];
+    }
+
+    function clearMap() {
+        layer.clearLayers();
+        if (ws) { ws.close(); ws = null; }
+        setStatus('очищено');
+    }
+
+    // FileDatasource: завантаження даних з CSV-файлу
+    async function loadFromFile() {
+        clearMap();
+        setStatus('завантаження з файлу...');
+        const res = await fetch('/api/file-data');
+        const points = await res.json();
+        const path = [];
+        points.forEach(p => path.push(addPoint(p.roadState, p.latitude, p.longitude)));
+        if (path.length) {
+            L.polyline(path, { color: '#2d9cdb', weight: 2, opacity: 0.5 }).addTo(layer);
+            map.fitBounds(path);
+        }
+        setStatus('завантажено з файлу: ' + points.length + ' точок');
+    }
+
+    // Підписка на дані зі Store через WebSocket (реальний час)
+    async function connectStore() {
+        clearMap();
+        const cfg = await fetch('/api/config').then(r => r.json());
+        const url = 'ws://' + cfg.storeWsHost + ':' + cfg.storeWsPort + '/ws/1';
+        setStatus('підключення до ' + url + ' ...');
+        ws = new WebSocket(url);
+        let count = 0;
+        ws.onopen = () => setStatus('підключено до Store, очікування даних...');
+        ws.onmessage = (event) => {
+            const d = JSON.parse(event.data);
+            const [a, b] = addPoint(d.road_state, d.latitude, d.longitude);
+            count++;
+            setStatus('отримано зі Store: ' + count + ' точок');
+            map.panTo([a, b]);
+        };
+        ws.onerror = () => setStatus('помилка підключення до Store (чи запущена система?)');
+        ws.onclose = () => { if (count) setStatus('зʼєднання закрито, точок: ' + count); };
+    }
+</script>
+</body>
+</html>

@@ -18,6 +18,7 @@
         <module>store</module>
         <module>hub</module>
         <module>edge</module>
+        <module>mapview</module>
     </modules>
 
 </project>
