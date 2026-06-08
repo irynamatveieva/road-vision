@@ -15,6 +15,7 @@
          Нові модулі (edge, hub, store, ...) додаються тут у наступних лабах. -->
     <modules>
         <module>agent</module>
+        <module>store</module>
     </modules>
 
 </project>
