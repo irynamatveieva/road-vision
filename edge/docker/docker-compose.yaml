@@ -109,6 +109,24 @@ services:
     networks:
       road_vision:
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      - postgres_db
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ../../grafana/provisioning:/etc/grafana/provisioning
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      road_vision:
+
   mapview:
     container_name: mapview
     build: ../../mapview
