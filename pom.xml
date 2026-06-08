@@ -17,6 +17,7 @@
         <module>agent</module>
         <module>store</module>
         <module>hub</module>
+        <module>edge</module>
     </modules>
 
 </project>
