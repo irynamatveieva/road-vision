@@ -3,10 +3,12 @@ package com.roadvision.edge.usecase;
 import com.roadvision.edge.domain.AccelerometerData;
 import com.roadvision.edge.domain.AgentData;
 import com.roadvision.edge.domain.ProcessedAgentData;
+import com.roadvision.edge.domain.StreetLight;
+import com.roadvision.edge.domain.Weather;
 
 /**
- * Первинна обробка даних: аналіз показників акселерометра та класифікація
- * стану дорожнього покриття (аналог process_agent_data у методичці).
+ * Первинна обробка даних: аналіз показників датчиків та класифікація станів
+ * (дорожнього покриття, погодних умов дороги та рівня освітлення).
  */
 public final class DataProcessing {
 
@@ -18,25 +20,43 @@ public final class DataProcessing {
     }
 
     /**
-     * Аналізує дані агента та класифікує стан дороги.
-     *
-     * @param agentData дані з акселерометра, GPS та позначкою часу
-     * @return проаналізовані дані з визначеним станом дороги
+     * Аналізує дані агента та класифікує стани дороги, погоди й освітлення.
      */
     public static ProcessedAgentData processAgentData(AgentData agentData) {
-        AccelerometerData acc = agentData.accelerometer();
+        String roadState = classifyRoad(agentData.accelerometer());
+        String weatherState = classifyWeather(agentData.weather());
+        String lightState = classifyLight(agentData.streetLight());
+        return new ProcessedAgentData(roadState, weatherState, lightState, agentData);
+    }
+
+    /** Класифікація стану дорожнього покриття за акселерометром. */
+    private static String classifyRoad(AccelerometerData acc) {
         double dz = Math.abs(acc.z() - Z_BASELINE);   // відхилення по вертикалі
         double ay = Math.abs(acc.y());                // поштовх по осі Y
-
-        String roadState;
         if (dz > 5000 || ay > 8000) {
-            roadState = "pothole";       // глибока яма / сильний поштовх
+            return "pothole";   // глибока яма / сильний поштовх
         } else if (dz > 2000 || ay > 3000) {
-            roadState = "bump";          // вибоїна / нерівність
-        } else {
-            roadState = "smooth";        // рівна дорога
+            return "bump";      // вибоїна / нерівність
         }
+        return "smooth";        // рівна дорога
+    }
 
-        return new ProcessedAgentData(roadState, agentData);
+    /** Класифікація стану дорожнього покриття за погодою: dry / wet / icy. */
+    private static String classifyWeather(Weather weather) {
+        if (weather.precipitation() > 0) {
+            return weather.temperature() <= 0 ? "icy" : "wet"; // ожеледиця за мінусової t
+        }
+        return "dry";
+    }
+
+    /** Класифікація рівня освітлення за освітленістю: dark / dim / bright. */
+    private static String classifyLight(StreetLight light) {
+        double lux = light.lux();
+        if (lux < 10) {
+            return "dark";
+        } else if (lux < 1000) {
+            return "dim";
+        }
+        return "bright";
     }
 }

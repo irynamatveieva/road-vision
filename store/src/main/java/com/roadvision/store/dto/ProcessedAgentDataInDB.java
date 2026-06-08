@@ -9,11 +9,18 @@ import java.time.Instant;
 public record ProcessedAgentDataInDB(
         Long id,
         String roadState,
+        String weatherState,
+        String lightState,
         int userId,
         double x,
         double y,
         double z,
         double latitude,
         double longitude,
+        double temperature,
+        double humidity,
+        double precipitation,
+        double lux,
+        boolean lightOn,
         Instant timestamp) {
 }

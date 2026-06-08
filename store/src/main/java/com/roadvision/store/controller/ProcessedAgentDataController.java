@@ -38,22 +38,36 @@ public class ProcessedAgentDataController {
 
     private ProcessedAgentDataEntity toEntity(ProcessedAgentData data) {
         ProcessedAgentDataEntity entity = new ProcessedAgentDataEntity();
+        applyData(entity, data);
+        return entity;
+    }
+
+    /** Перенесення полів з DTO у сутність (спільне для create та update). */
+    private void applyData(ProcessedAgentDataEntity entity, ProcessedAgentData data) {
         entity.setRoadState(data.roadState());
+        entity.setWeatherState(data.weatherState());
+        entity.setLightState(data.lightState());
         entity.setUserId(data.agentData().userId());
         entity.setX(data.agentData().accelerometer().x());
         entity.setY(data.agentData().accelerometer().y());
         entity.setZ(data.agentData().accelerometer().z());
         entity.setLatitude(data.agentData().gps().latitude());
         entity.setLongitude(data.agentData().gps().longitude());
+        entity.setTemperature(data.agentData().weather().temperature());
+        entity.setHumidity(data.agentData().weather().humidity());
+        entity.setPrecipitation(data.agentData().weather().precipitation());
+        entity.setLux(data.agentData().streetLight().lux());
+        entity.setLightOn(data.agentData().streetLight().isOn());
         entity.setTimestamp(data.agentData().timestamp());
-        return entity;
     }
 
     private ProcessedAgentDataInDB toDto(ProcessedAgentDataEntity e) {
         return new ProcessedAgentDataInDB(
-                e.getId(), e.getRoadState(), e.getUserId(),
+                e.getId(), e.getRoadState(), e.getWeatherState(), e.getLightState(), e.getUserId(),
                 e.getX(), e.getY(), e.getZ(),
-                e.getLatitude(), e.getLongitude(), e.getTimestamp());
+                e.getLatitude(), e.getLongitude(),
+                e.getTemperature(), e.getHumidity(), e.getPrecipitation(),
+                e.getLux(), e.isLightOn(), e.getTimestamp());
     }
 
     private ProcessedAgentDataEntity findOr404(int id) {
@@ -90,14 +104,7 @@ public class ProcessedAgentDataController {
     @PutMapping("/{id}")
     public ProcessedAgentDataInDB update(@PathVariable int id, @RequestBody ProcessedAgentData data) {
         ProcessedAgentDataEntity entity = findOr404(id);
-        entity.setRoadState(data.roadState());
-        entity.setUserId(data.agentData().userId());
-        entity.setX(data.agentData().accelerometer().x());
-        entity.setY(data.agentData().accelerometer().y());
-        entity.setZ(data.agentData().accelerometer().z());
-        entity.setLatitude(data.agentData().gps().latitude());
-        entity.setLongitude(data.agentData().gps().longitude());
-        entity.setTimestamp(data.agentData().timestamp());
+        applyData(entity, data);
         return toDto(repository.save(entity));
     }
 

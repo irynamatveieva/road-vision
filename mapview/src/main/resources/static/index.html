@@ -26,6 +26,16 @@
         .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
         #status { font-size: 13px; opacity: .85; }
         #map { height: calc(100vh - 52px); width: 100%; }
+        /* Віджет з показниками нових сенсорів */
+        #widgets {
+            position: absolute; top: 64px; right: 12px; z-index: 1000;
+            display: none; flex-direction: column; gap: 8px;
+        }
+        .widget {
+            min-width: 180px; padding: 10px 14px; border-radius: 8px; color: #fff;
+            font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.3); font-weight: bold;
+        }
+        .widget small { display: block; font-weight: normal; opacity: .9; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -43,8 +53,15 @@
 </div>
 <div id="map"></div>
 
+<!-- Віджети нових сенсорів (погода, освітлення) — заповнюються в режимі "наживо" -->
+<div id="widgets">
+    <div class="widget" id="w-weather" style="background:#2980b9">🌡️ <span id="w-temp">--</span>
+        <small id="w-weather-state">погода</small></div>
+    <div class="widget" id="w-light" style="background:#8e44ad">💡 <span id="w-light-state">--</span>
+        <small id="w-lux">освітлення</small></div>
+</div>
+
 <script>
-    // Карта з центром на Києві
     const map = L.map('map').setView([50.4501, 30.5234], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap', maxZoom: 19
@@ -54,8 +71,10 @@
     let ws = null;
 
     const COLORS = { smooth: '#27ae60', bump: '#f2994a', pothole: '#eb5757' };
+    const WEATHER_COLOR = { dry: '#2980b9', wet: '#16a085', icy: '#c0392b' };
+    const LIGHT_COLOR = { bright: '#f39c12', dim: '#8e44ad', dark: '#2c3e50' };
 
-    function setStatus(text) { document.getElementById('status').textContent = text; }
+    function setStatus(t) { document.getElementById('status').textContent = t; }
 
     // Виправлення переплутаних координат: широта Києва ~50, довгота ~30.
     function normalize(lat, lon) {
@@ -64,31 +83,52 @@
         return [lat, lon];
     }
 
-    function addPoint(roadState, lat, lon) {
-        const [a, b] = normalize(lat, lon);
-        const color = COLORS[roadState] || '#888';
+    // rec: { roadState, lat, lon, weatherState?, lightState?, temperature?, lux? }
+    function addPoint(rec) {
+        const [a, b] = normalize(rec.lat, rec.lon);
+        const color = COLORS[rec.roadState] || '#888';
+        let popup = 'Дорога: <b>' + rec.roadState + '</b>';
+        if (rec.weatherState) popup += '<br>Погода: <b>' + rec.weatherState + '</b>'
+            + (rec.temperature !== undefined ? ' (' + rec.temperature.toFixed(1) + '°C)' : '');
+        if (rec.lightState) popup += '<br>Освітлення: <b>' + rec.lightState + '</b>'
+            + (rec.lux !== undefined ? ' (' + Math.round(rec.lux) + ' лк)' : '');
+        popup += '<br>(' + a.toFixed(5) + ', ' + b.toFixed(5) + ')';
         L.circleMarker([a, b], {
-            radius: roadState === 'smooth' ? 5 : 8,
+            radius: rec.roadState === 'smooth' ? 5 : 8,
             color: color, fillColor: color, fillOpacity: 0.85, weight: 1
-        }).bindPopup('Стан: <b>' + roadState + '</b><br>(' + a.toFixed(5) + ', ' + b.toFixed(5) + ')')
-          .addTo(layer);
+        }).bindPopup(popup).addTo(layer);
         return [a, b];
+    }
+
+    // Оновлення віджетів нових сенсорів
+    function updateWidgets(rec) {
+        document.getElementById('widgets').style.display = 'flex';
+        if (rec.temperature !== undefined) {
+            document.getElementById('w-temp').textContent = rec.temperature.toFixed(1) + '°C';
+            document.getElementById('w-weather-state').textContent = 'дорога: ' + (rec.weatherState || '--');
+            document.getElementById('w-weather').style.background = WEATHER_COLOR[rec.weatherState] || '#2980b9';
+        }
+        if (rec.lightState) {
+            document.getElementById('w-light-state').textContent = rec.lightState;
+            document.getElementById('w-lux').textContent = (rec.lux !== undefined ? Math.round(rec.lux) + ' лк' : 'освітлення');
+            document.getElementById('w-light').style.background = LIGHT_COLOR[rec.lightState] || '#8e44ad';
+        }
     }
 
     function clearMap() {
         layer.clearLayers();
         if (ws) { ws.close(); ws = null; }
+        document.getElementById('widgets').style.display = 'none';
         setStatus('очищено');
     }
 
-    // FileDatasource: завантаження даних з CSV-файлу
+    // FileDatasource: завантаження маршруту з CSV-файлу
     async function loadFromFile() {
         clearMap();
         setStatus('завантаження з файлу...');
-        const res = await fetch('/api/file-data');
-        const points = await res.json();
+        const points = await fetch('/api/file-data').then(r => r.json());
         const path = [];
-        points.forEach(p => path.push(addPoint(p.roadState, p.latitude, p.longitude)));
+        points.forEach(p => path.push(addPoint({ roadState: p.roadState, lat: p.latitude, lon: p.longitude })));
         if (path.length) {
             L.polyline(path, { color: '#2d9cdb', weight: 2, opacity: 0.5 }).addTo(layer);
             map.fitBounds(path);
@@ -96,7 +136,7 @@
         setStatus('завантажено з файлу: ' + points.length + ' точок');
     }
 
-    // Підписка на дані зі Store через WebSocket (реальний час)
+    // Інтеграція зі Store: підписка на оновлення через WebSocket (з новими сенсорами)
     async function connectStore() {
         clearMap();
         const cfg = await fetch('/api/config').then(r => r.json());
@@ -107,7 +147,13 @@
         ws.onopen = () => setStatus('підключено до Store, очікування даних...');
         ws.onmessage = (event) => {
             const d = JSON.parse(event.data);
-            const [a, b] = addPoint(d.road_state, d.latitude, d.longitude);
+            const rec = {
+                roadState: d.road_state, lat: d.latitude, lon: d.longitude,
+                weatherState: d.weather_state, lightState: d.light_state,
+                temperature: d.temperature, lux: d.lux
+            };
+            const [a, b] = addPoint(rec);
+            updateWidgets(rec);
             count++;
             setStatus('отримано зі Store: ' + count + ' точок');
             map.panTo([a, b]);

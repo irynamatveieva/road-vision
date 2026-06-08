@@ -14,6 +14,8 @@ import java.time.Instant;
 public record AggregatedData(
         Accelerometer accelerometer,
         Gps gps,
+        Weather weather,
+        @JsonProperty("street_light") StreetLight streetLight,
         Instant timestamp,
         @JsonProperty("user_id") int userId) {
 }

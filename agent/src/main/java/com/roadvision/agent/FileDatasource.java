@@ -4,6 +4,8 @@ import com.roadvision.agent.domain.Accelerometer;
 import com.roadvision.agent.domain.AggregatedData;
 import com.roadvision.agent.domain.Gps;
 import com.roadvision.agent.domain.Parking;
+import com.roadvision.agent.domain.StreetLight;
+import com.roadvision.agent.domain.Weather;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -76,11 +78,16 @@ public class FileDatasource {
     private final CsvCursor accelerometer;
     private final CsvCursor gps;
     private final CsvCursor parking;
+    private final CsvCursor weather;
+    private final CsvCursor streetLight;
 
-    public FileDatasource(String accelerometerFilename, String gpsFilename, String parkingFilename) {
+    public FileDatasource(String accelerometerFilename, String gpsFilename, String parkingFilename,
+                          String weatherFilename, String streetLightFilename) {
         this.accelerometer = new CsvCursor(accelerometerFilename);
         this.gps = new CsvCursor(gpsFilename);
         this.parking = new CsvCursor(parkingFilename);
+        this.weather = new CsvCursor(weatherFilename);
+        this.streetLight = new CsvCursor(streetLightFilename);
     }
 
     /** Викликається перед початком читання — відкриває всі файли. */
@@ -88,6 +95,8 @@ public class FileDatasource {
         accelerometer.open();
         gps.open();
         parking.open();
+        weather.open();
+        streetLight.open();
     }
 
     /**
@@ -99,6 +108,8 @@ public class FileDatasource {
         for (int i = 0; i < Config.BATCH_SIZE; i++) {
             String[] acc = accelerometer.nextLine().split(",");
             String[] coords = gps.nextLine().split(",");
+            String[] wth = weather.nextLine().split(",");
+            String[] light = streetLight.nextLine().split(",");
 
             Accelerometer accelerometerData = new Accelerometer(
                     Integer.parseInt(acc[0].trim()),
@@ -107,8 +118,17 @@ public class FileDatasource {
             Gps gpsData = new Gps(
                     Double.parseDouble(coords[0].trim()),
                     Double.parseDouble(coords[1].trim()));
+            Weather weatherData = new Weather(
+                    Double.parseDouble(wth[0].trim()),
+                    Double.parseDouble(wth[1].trim()),
+                    Double.parseDouble(wth[2].trim()));
+            StreetLight streetLightData = new StreetLight(
+                    Double.parseDouble(light[0].trim()),
+                    Boolean.parseBoolean(light[1].trim()));
 
-            batch.add(new AggregatedData(accelerometerData, gpsData, Instant.now(), Config.USER_ID));
+            batch.add(new AggregatedData(
+                    accelerometerData, gpsData, weatherData, streetLightData,
+                    Instant.now(), Config.USER_ID));
         }
         return batch;
     }
@@ -134,5 +154,7 @@ public class FileDatasource {
         accelerometer.close();
         gps.close();
         parking.close();
+        weather.close();
+        streetLight.close();
     }
 }

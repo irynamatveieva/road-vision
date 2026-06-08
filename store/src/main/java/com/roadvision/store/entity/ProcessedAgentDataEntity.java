@@ -23,6 +23,12 @@ public class ProcessedAgentDataEntity {
     @Column(name = "road_state")
     private String roadState;
 
+    @Column(name = "weather_state")
+    private String weatherState;
+
+    @Column(name = "light_state")
+    private String lightState;
+
     @Column(name = "user_id")
     private int userId;
 
@@ -31,6 +37,15 @@ public class ProcessedAgentDataEntity {
     private double z;
     private double latitude;
     private double longitude;
+
+    // Нові сенсори: погода та вуличне освітлення
+    private double temperature;
+    private double humidity;
+    private double precipitation;
+    private double lux;
+
+    @Column(name = "light_on")
+    private boolean lightOn;
 
     @Column(name = "timestamp")
     private Instant timestamp;
@@ -52,6 +67,22 @@ public class ProcessedAgentDataEntity {
 
     public void setRoadState(String roadState) {
         this.roadState = roadState;
+    }
+
+    public String getWeatherState() {
+        return weatherState;
+    }
+
+    public void setWeatherState(String weatherState) {
+        this.weatherState = weatherState;
+    }
+
+    public String getLightState() {
+        return lightState;
+    }
+
+    public void setLightState(String lightState) {
+        this.lightState = lightState;
     }
 
     public int getUserId() {
@@ -100,6 +131,46 @@ public class ProcessedAgentDataEntity {
 
     public void setLongitude(double longitude) {
         this.longitude = longitude;
+    }
+
+    public double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(double temperature) {
+        this.temperature = temperature;
+    }
+
+    public double getHumidity() {
+        return humidity;
+    }
+
+    public void setHumidity(double humidity) {
+        this.humidity = humidity;
+    }
+
+    public double getPrecipitation() {
+        return precipitation;
+    }
+
+    public void setPrecipitation(double precipitation) {
+        this.precipitation = precipitation;
+    }
+
+    public double getLux() {
+        return lux;
+    }
+
+    public void setLux(double lux) {
+        this.lux = lux;
+    }
+
+    public boolean isLightOn() {
+        return lightOn;
+    }
+
+    public void setLightOn(boolean lightOn) {
+        this.lightOn = lightOn;
     }
 
     public Instant getTimestamp() {

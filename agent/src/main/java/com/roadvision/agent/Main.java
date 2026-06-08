@@ -81,7 +81,9 @@ public class Main {
         FileDatasource datasource = new FileDatasource(
                 Config.ACCELEROMETER_FILE,
                 Config.GPS_FILE,
-                Config.PARKING_FILE);
+                Config.PARKING_FILE,
+                Config.WEATHER_FILE,
+                Config.STREET_LIGHT_FILE);
         try {
             publishLoop(client, datasource, Config.DELAY);
         } finally {

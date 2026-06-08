@@ -6,5 +6,7 @@ package com.roadvision.hub.dto;
  */
 public record ProcessedAgentData(
         String roadState,
+        String weatherState,
+        String lightState,
         AgentData agentData) {
 }

@@ -45,6 +45,8 @@ public final class Config {
     public static final String ACCELEROMETER_FILE = env("ACCELEROMETER_FILE", "data/accelerometer.csv");
     public static final String GPS_FILE = env("GPS_FILE", "data/gps.csv");
     public static final String PARKING_FILE = env("PARKING_FILE", "data/parking.csv");
+    public static final String WEATHER_FILE = env("WEATHER_FILE", "data/weather.csv");
+    public static final String STREET_LIGHT_FILE = env("STREET_LIGHT_FILE", "data/street_light.csv");
 
     // Затримка між відправками даних у MQTT (секунди)
     public static final double DELAY = tryParseDouble(System.getenv("DELAY"), 1.0);

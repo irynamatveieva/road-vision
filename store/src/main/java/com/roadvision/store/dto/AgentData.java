@@ -10,5 +10,7 @@ public record AgentData(
         int userId,
         AccelerometerData accelerometer,
         GpsData gps,
+        Weather weather,
+        StreetLight streetLight,
         Instant timestamp) {
 }
