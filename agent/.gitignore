@@ -1,0 +1,7 @@
+target/
+dependency-reduced-pom.xml
+*.class
+docker/mosquitto/data/
+docker/mosquitto/log/
+.idea/
+*.iml
